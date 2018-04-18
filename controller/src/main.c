@@ -66,8 +66,6 @@ int main(void)
 		if( ticks - lastTicks >=2000) {
 			lastTicks = ticks;
 		}
-
-
 		checkButton();
 	}
 }
@@ -155,7 +153,10 @@ void checkStatus(char *msg)
 {
 	int8_t status = getLockStatus(msg);
 	if (status != -1 && status != ledStatus)
+	{
+		//sendMsg("lock status changed\n");
 		STM_EVAL_LEDToggle(LED3);
+	}
 }
 
 void handleMsg(char *msg)
@@ -163,18 +164,25 @@ void handleMsg(char *msg)
 	checkStatus(msg);
 }
 
+void sendMsg(char *msg)
+{
+	putStr(&txbuffer, msg, strlen(msg));
+	USART_ITConfig(USART6, USART_IT_TXE, ENABLE);
+	sendTicks = ticks;
+	sendOn = 1;
+}
+
 void flipLock()
 {
 	char msg[256] = "{\"Type\":\"Command\",\"FlipLock\":\"true\"}\n";
-
-	putStr(&txbuffer, msg, strlen(msg));
-	USART_ITConfig(USART6, USART_IT_TXE, ENABLE); // enable the USART6 TXE interrupt
+	sendMsg(msg);
 }
 
+/* the button can only be detected once every 1 second to prevent spamming */
 uint32_t lastButton;
 uint8_t debounce()
 {
-	if (lastButton + 1000 < ticks)
+	if (lastButton + 1000 <= ticks)
 		return 1;
 	return 0;
 }
@@ -184,8 +192,6 @@ void checkButton()
 	if( debounce() && GPIOA->IDR & 0x0001)
 	{
 		lastButton = ticks;
-		//putStr(&txbuffer, "button\n", 6);
-		STM_EVAL_LEDToggle(LED3);
 		flipLock();
 	}
 }
@@ -212,10 +218,10 @@ void USART6_IRQHandler(void) {
 			getStr(&buffer, res);
 			handleMsg(res);
 
-			putStr(&txbuffer, res, strlen(res));
+			//putStr(&txbuffer, res, strlen(res));
 
-			sendTicks = ticks;
-			sendOn = 1;
+			//sendTicks = ticks;
+			//sendOn = 1;
 		}
 	}
 	if( USART_GetITStatus(USART6, USART_IT_TXE) )

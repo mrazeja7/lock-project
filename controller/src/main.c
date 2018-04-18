@@ -14,6 +14,8 @@
 #include "USART.h"
 #include "circularBuffer.h"
 #include "ECE631JSON.h"
+#include "stm32f4xx_exti.h"
+
 
 static uint32_t ticks = 0;
 static uint32_t lastTicks = 0;
@@ -64,6 +66,7 @@ int main(void)
 		if( ticks - lastTicks >=2000) {
 			lastTicks = ticks;
 		}
+
 
 		checkButton();
 	}
@@ -125,6 +128,10 @@ void stripEscapes(char *str)
 	memcpy(str, newStr, oldLen);
 }
 
+/*
+ * Checks the incoming JSON string for a lock status message.
+ * Returns 1 if the lock is locked, 0 if unlocked, -1 if the message doesn't contain a lock status.
+*/
 int8_t getLockStatus(char *jsonString)
 {
 	uint32_t tokenSize = 10;
@@ -161,15 +168,26 @@ void flipLock()
 	char msg[256] = "{\"Type\":\"Command\",\"FlipLock\":\"true\"}\n";
 
 	putStr(&txbuffer, msg, strlen(msg));
+	USART_ITConfig(USART6, USART_IT_TXE, ENABLE); // enable the USART6 TXE interrupt
+}
+
+uint32_t lastButton;
+uint8_t debounce()
+{
+	if (lastButton + 1000 < ticks)
+		return 1;
+	return 0;
 }
 
 void checkButton()
 {
-	return;
-	uint8_t buttonStatus;
-	//buttonStatus = Read_User_Button();
-	if(buttonStatus == PRESSED_BUTTON_USER)
+	if( debounce() && GPIOA->IDR & 0x0001)
+	{
+		lastButton = ticks;
+		//putStr(&txbuffer, "button\n", 6);
+		STM_EVAL_LEDToggle(LED3);
 		flipLock();
+	}
 }
 
 /*

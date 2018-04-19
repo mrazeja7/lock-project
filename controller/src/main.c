@@ -9,6 +9,8 @@
 ******************************************************************************
 */
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "stm32f4xx.h"
 #include "stm32f4_discovery.h"
 #include "USART.h"
@@ -58,9 +60,6 @@ int main(void)
 	STM_EVAL_LEDInit(LED4); //green
 	STM_EVAL_LEDInit(LED5); //red
 	STM_EVAL_LEDInit(LED6); //blue
-
-	//char* startText= "{\"Action\":\"Debug\",\"Info\":\"Testing UART6\"}";
-	//SendCharArrayUSART6(startText,strlen(startText));
 	while(1){
 		handleLeds();
 		if( ticks - lastTicks >=2000) {
@@ -112,11 +111,38 @@ void SysTick_Handler(void) {
 	ticks++;
 }
 
+/* gets rid of all occurences of "{ and }" pairs
+ * (and replaces them with { and } respectively),
+ * as the jsmn parser has trouble with those.
+ */
+void unquoteBraces(char *str)
+{
+	int oldLen = strlen(str);
+	int newLen = 0;
+	char newStr[512] = {0};
+
+	for (int i = 0; i < oldLen -1; ++i)
+	{
+		if (str[i] == '\"' && str[i+1] == '{')
+			continue;
+		else if (str[i] == '}' && str[i+1] == '\"')
+		{
+			newStr[newLen++] = '}';
+			i++;
+		}
+		else
+			newStr[newLen++] = str[i];
+	}
+	newStr[newLen++] = str[oldLen-1];
+	memcpy(str, newStr, oldLen);
+}
+
+/* gets rid of all backslashes as the jsmn parser sometimes has trouble parsing them. */
 void stripEscapes(char *str)
 {
 	int oldLen = strlen(str);
 	int newLen = 0;
-	char newStr[256] = {0};
+	char newStr[512] = {0};
 
 	for (int i = 0; i < oldLen; ++i)
 	{
@@ -129,32 +155,33 @@ void stripEscapes(char *str)
 /*
  * Checks the incoming JSON string for a lock status message.
  * Returns 1 if the lock is locked, 0 if unlocked, -1 if the message doesn't contain a lock status.
-*/
+ */
 int8_t getLockStatus(char *jsonString)
 {
-	uint32_t tokenSize = 10;
-	jsmntok_t *tokens = (jsmntok_t *)malloc(tokenSize * sizeof(jsmntok_t));
+	jsmn_parser p;
+	jsmn_init(&p);
+	jsmntok_t tokens[50];
 	stripEscapes(jsonString);
-	uint32_t numtok = jsmn_parse(&parser, jsonString, strlen(jsonString), tokens, tokenSize);
-	char status[16] = {0};
+	unquoteBraces(jsonString);
+	int32_t numtok = jsmn_parse(&p, jsonString, strlen(jsonString), tokens, 50);
+	char status[32] = {0};
 	extract_value(jsonString,"LockStatus",status,numtok,tokens);
-	free(tokens);
 	if (strcmp(status, "locked") == 0)
 		return 1;
-	else if (strcmp(status, "unlocked") == 0)
+	if (strcmp(status, "unlocked") == 0)
 		return 0;
 
 	return -1;
 }
 
-uint8_t ledStatus;
+int8_t ledStatus;
 
 void checkStatus(char *msg)
 {
 	int8_t status = getLockStatus(msg);
 	if (status != -1 && status != ledStatus)
 	{
-		//sendMsg("lock status changed\n");
+		ledStatus = status;
 		STM_EVAL_LEDToggle(LED3);
 	}
 }
@@ -162,6 +189,19 @@ void checkStatus(char *msg)
 void handleMsg(char *msg)
 {
 	checkStatus(msg);
+}
+
+void publishMQTT(char *msg)
+{
+	// sprintf doesn't work?
+	char resp[512] = "{\"Action\":\"MQTTPub\",\"MQTT\":{\"Topic\":\"lock\",\"Message\":\"";
+	putStr(&txbuffer, resp, strlen(resp));
+	putStr(&txbuffer, msg, strlen(msg));
+	char resp3[256] = "\"}}\n";
+	putStr(&txbuffer, resp3, strlen(resp3));
+	USART_ITConfig(USART6, USART_IT_TXE, ENABLE);
+	sendTicks = ticks;
+	sendOn = 1;
 }
 
 void sendMsg(char *msg)
@@ -174,8 +214,9 @@ void sendMsg(char *msg)
 
 void flipLock()
 {
-	char msg[256] = "{\"Type\":\"Command\",\"FlipLock\":\"true\"}\n";
-	sendMsg(msg);
+	char msg[128] = "{\\\"Type\\\":\\\"Command\\\",\\\"FlipLock\\\":\\\"true\\\"}";
+	publishMQTT(msg);
+	//sendMsg(msg);
 }
 
 /* the button can only be detected once every 1 second to prevent spamming */

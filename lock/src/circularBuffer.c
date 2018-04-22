@@ -13,8 +13,6 @@ void InitBuffer(commBuffer_t* comm)
 //Test if a complete string is in buffer delimiter is \n
 uint8_t haveStr(commBuffer_t* comm)
 {
-	//int i;
-	//for(i = 0; i < MAXCOMMBUFFER+1; ++i)
 	int i = comm->tail;
 	while (i != comm->head)
 	{
@@ -57,14 +55,13 @@ void getStr(commBuffer_t* comm, char* str)
 {
 	int i = 0;
 	char res[MAXCOMMBUFFER+1];
-	while(1)//comm->head != comm->tail)
+	while(1)
 	{
 		char r = getChar(comm);
 		str[i++] = r;
 		if (r == '\n' || i == MAXCOMMBUFFER)
 			return;
 	}
-	//str = res;
 }
 //get Size of Buffer
 int getBufferSize(commBuffer_t* comm)

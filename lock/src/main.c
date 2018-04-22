@@ -96,7 +96,7 @@ void SysTick_Handler(void) {
 	ticks++;
 }
 
-/* gets rid of all occurences of "{ and }" pairs
+/* Gets rid of all occurences of "{ and }" pairs
  * (and replaces them with { and } respectively),
  * as the jsmn parser has trouble with those.
  */
@@ -122,7 +122,7 @@ void unquoteBraces(char *str)
 	memcpy(str, newStr, oldLen);
 }
 
-/* gets rid of all backslashes as the jsmn parser sometimes has trouble parsing them. */
+/* Gets rid of all backslashes as the jsmn parser sometimes has trouble parsing them. */
 void stripEscapes(char *str)
 {
 	int oldLen = strlen(str);
@@ -175,7 +175,7 @@ void handleMsg(char *msg)
 	checkMessage(msg);
 }
 
-/* constructs and publishes a message onto the MQTT channel.
+/* Constructs and publishes a message onto the MQTT channel.
  * Uses multiple putStr() calls because I couldn't get sprintf to work for some reason.
  */
 void publishMQTT(char *msg)
@@ -191,7 +191,7 @@ void publishMQTT(char *msg)
 	sendOn = 1;
 }
 
-/* send a non-MQTT message via UART */
+/* Send a non-MQTT message via UART */
 void sendMsg(char *msg)
 {
 	putStr(&txbuffer, msg, strlen(msg));

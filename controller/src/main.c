@@ -28,7 +28,6 @@ int main(void)
 	InitBuffer(&buffer);
 	InitBuffer(&txbuffer);
 	jsmn_init(&parser);
-	//memset(buffer.buffer, 0, MAXCOMMBUFFER+1);
 	InitUSART6();
 
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
@@ -100,7 +99,7 @@ void SysTick_Handler(void) {
 	ticks++;
 }
 
-/* gets rid of all occurences of "{ and }" pairs
+/* Gets rid of all occurences of "{ and }" pairs
  * (and replaces them with { and } respectively),
  * as the jsmn parser has trouble with those.
  */
@@ -126,7 +125,7 @@ void unquoteBraces(char *str)
 	memcpy(str, newStr, oldLen);
 }
 
-/* gets rid of all backslashes as the jsmn parser sometimes has trouble parsing them. */
+/* Gets rid of all backslashes as the jsmn parser sometimes has trouble parsing them. */
 void stripEscapes(char *str)
 {
 	int oldLen = strlen(str);
@@ -165,7 +164,7 @@ int8_t getLockStatus(char *jsonString)
 
 int8_t ledStatus;
 
-/* compares the lock's status to what is displayed via the controller's LED.
+/* Compares the lock's status to what is displayed via the controller's LED.
  * If states differ, changes controller's LED to match lock's engagement.
  */
 void checkStatus(char *msg)
@@ -183,7 +182,7 @@ void handleMsg(char *msg)
 	checkStatus(msg);
 }
 
-/* constructs and publishes a message onto the MQTT channel.
+/* Constructs and publishes a message onto the MQTT channel.
  * Uses multiple putStr() calls because I couldn't get sprintf to work for some reason.
  */
 void publishMQTT(char *msg)
@@ -199,7 +198,7 @@ void publishMQTT(char *msg)
 	sendOn = 1;
 }
 
-/* send a non-MQTT message via UART */
+/* Send a non-MQTT message via UART */
 void sendMsg(char *msg)
 {
 	putStr(&txbuffer, msg, strlen(msg));
@@ -208,14 +207,14 @@ void sendMsg(char *msg)
 	sendOn = 1;
 }
 
-/* publishes a message that tells the lock to change its state */
+/* Publishes a message that tells the lock to change its state */
 void flipLock()
 {
 	char msg[128] = "{\\\"Type\\\":\\\"Command\\\",\\\"FlipLock\\\":\\\"true\\\"}";
 	publishMQTT(msg);
 }
 
-/* the button can only be detected once every 1 second to prevent spamming */
+/* The button can only be detected once every 1 second to prevent spamming */
 uint32_t lastButton;
 uint8_t debounce()
 {
@@ -224,7 +223,7 @@ uint8_t debounce()
 	return 0;
 }
 
-/* checks if the user (==blue) button is currently pressed and can be used. */
+/* Checks if the user (==blue) button is currently pressed and can be used. */
 void checkButton()
 {
 	if( debounce() && GPIOA->IDR & 0x0001)

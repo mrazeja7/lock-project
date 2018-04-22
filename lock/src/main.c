@@ -1,13 +1,3 @@
-//ART Sample Project
-/**
-******************************************************************************
-* @file main.c
-* @author Ac6
-* @version V1.0
-* @date 01-December-2013
-* @brief Default main function.
-******************************************************************************
-*/
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +7,6 @@
 #include "circularBuffer.h"
 #include "ECE631JSON.h"
 #include "stm32f4xx_exti.h"
-
 
 static uint32_t ticks = 0;
 static uint32_t lastTicks = 0;
@@ -29,21 +18,15 @@ short recvLedOn = 0;
 short sendLedOn = 0;
 static uint32_t USARTCount = 0;
 
-#define PRESSED_BUTTON_NONE 0x00
-#define PRESSED_BUTTON_USER 0x01
-
 commBuffer_t buffer;
 commBuffer_t txbuffer;
-
 jsmn_parser parser;
 
-//UART6
 int main(void)
 {
 	InitBuffer(&buffer);
 	InitBuffer(&txbuffer);
 	jsmn_init(&parser);
-	memset(buffer.buffer, 0, MAXCOMMBUFFER+1);
 	InitUSART6();
 
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
@@ -60,14 +43,17 @@ int main(void)
 	STM_EVAL_LEDInit(LED4); //green
 	STM_EVAL_LEDInit(LED5); //red
 	STM_EVAL_LEDInit(LED6); //blue
-	while(1){
+	while(1)
+	{
 		handleLeds();
-		if( ticks - lastTicks >=2000) {
+		if( ticks - lastTicks >=2000)
 			lastTicks = ticks;
-		}
 	}
 }
 
+/* Wonderful piece of spaghetti code I produced for the fifth lab assignment.
+ * Keeping it here because it works.
+ */
 void handleLeds()
 {
 	if (ticks % 1000 == 0)
@@ -158,12 +144,14 @@ int8_t lockStatus;
  */
 void setLockStatus()
 {
+	STM_EVAL_LEDToggle(LED3);
 	if (lockStatus == 0)
 		lockStatus = 1;
 	else
 		lockStatus = 0;
 }
 
+/* Checks if the received message contains a command to flip the lock's status (ie. lock or unlock the lock) */
 void checkMessage(char *jsonString)
 {
 	jsmn_parser p;
@@ -187,6 +175,9 @@ void handleMsg(char *msg)
 	checkMessage(msg);
 }
 
+/* constructs and publishes a message onto the MQTT channel.
+ * Uses multiple putStr() calls because I couldn't get sprintf to work for some reason.
+ */
 void publishMQTT(char *msg)
 {
 	// sprintf doesn't work?
@@ -200,6 +191,7 @@ void publishMQTT(char *msg)
 	sendOn = 1;
 }
 
+/* send a non-MQTT message via UART */
 void sendMsg(char *msg)
 {
 	putStr(&txbuffer, msg, strlen(msg));
@@ -208,6 +200,9 @@ void sendMsg(char *msg)
 	sendOn = 1;
 }
 
+/* DRY am I right?
+ * could use a sprintf redo
+ */
 void sendStatus()
 {
 	if (lockStatus == 0)
@@ -248,11 +243,6 @@ void USART6_IRQHandler(void) {
 			memset(res, 0, MAXCOMMBUFFER+1);
 			getStr(&buffer, res);
 			handleMsg(res);
-
-			//putStr(&txbuffer, res, strlen(res));
-
-			//sendTicks = ticks;
-			//sendOn = 1;
 		}
 	}
 	if( USART_GetITStatus(USART6, USART_IT_TXE) )

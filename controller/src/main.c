@@ -1,13 +1,3 @@
-//ART Sample Project
-/**
-******************************************************************************
-* @file main.c
-* @author Ac6
-* @version V1.0
-* @date 01-December-2013
-* @brief Default main function.
-******************************************************************************
-*/
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +7,6 @@
 #include "circularBuffer.h"
 #include "ECE631JSON.h"
 #include "stm32f4xx_exti.h"
-
 
 static uint32_t ticks = 0;
 static uint32_t lastTicks = 0;
@@ -29,21 +18,17 @@ short recvLedOn = 0;
 short sendLedOn = 0;
 static uint32_t USARTCount = 0;
 
-#define PRESSED_BUTTON_NONE 0x00
-#define PRESSED_BUTTON_USER 0x01
-
 commBuffer_t buffer;
 commBuffer_t txbuffer;
 
 jsmn_parser parser;
 
-//UART6
 int main(void)
 {
 	InitBuffer(&buffer);
 	InitBuffer(&txbuffer);
 	jsmn_init(&parser);
-	memset(buffer.buffer, 0, MAXCOMMBUFFER+1);
+	//memset(buffer.buffer, 0, MAXCOMMBUFFER+1);
 	InitUSART6();
 
 	STM_EVAL_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
@@ -60,15 +45,19 @@ int main(void)
 	STM_EVAL_LEDInit(LED4); //green
 	STM_EVAL_LEDInit(LED5); //red
 	STM_EVAL_LEDInit(LED6); //blue
-	while(1){
+	while(1)
+	{
 		handleLeds();
-		if( ticks - lastTicks >=2000) {
+		if( ticks - lastTicks >=2000)
 			lastTicks = ticks;
-		}
+
 		checkButton();
 	}
 }
 
+/* Wonderful piece of spaghetti code I produced for the fifth lab assignment.
+ * Keeping it here because it works.
+ */
 void handleLeds()
 {
 	if (ticks % 1000 == 0)
@@ -176,6 +165,9 @@ int8_t getLockStatus(char *jsonString)
 
 int8_t ledStatus;
 
+/* compares the lock's status to what is displayed via the controller's LED.
+ * If states differ, changes controller's LED to match lock's engagement.
+ */
 void checkStatus(char *msg)
 {
 	int8_t status = getLockStatus(msg);
@@ -191,6 +183,9 @@ void handleMsg(char *msg)
 	checkStatus(msg);
 }
 
+/* constructs and publishes a message onto the MQTT channel.
+ * Uses multiple putStr() calls because I couldn't get sprintf to work for some reason.
+ */
 void publishMQTT(char *msg)
 {
 	// sprintf doesn't work?
@@ -204,6 +199,7 @@ void publishMQTT(char *msg)
 	sendOn = 1;
 }
 
+/* send a non-MQTT message via UART */
 void sendMsg(char *msg)
 {
 	putStr(&txbuffer, msg, strlen(msg));
@@ -212,11 +208,11 @@ void sendMsg(char *msg)
 	sendOn = 1;
 }
 
+/* publishes a message that tells the lock to change its state */
 void flipLock()
 {
 	char msg[128] = "{\\\"Type\\\":\\\"Command\\\",\\\"FlipLock\\\":\\\"true\\\"}";
 	publishMQTT(msg);
-	//sendMsg(msg);
 }
 
 /* the button can only be detected once every 1 second to prevent spamming */
@@ -228,6 +224,7 @@ uint8_t debounce()
 	return 0;
 }
 
+/* checks if the user (==blue) button is currently pressed and can be used. */
 void checkButton()
 {
 	if( debounce() && GPIOA->IDR & 0x0001)
@@ -258,11 +255,6 @@ void USART6_IRQHandler(void) {
 			memset(res, 0, MAXCOMMBUFFER+1);
 			getStr(&buffer, res);
 			handleMsg(res);
-
-			//putStr(&txbuffer, res, strlen(res));
-
-			//sendTicks = ticks;
-			//sendOn = 1;
 		}
 	}
 	if( USART_GetITStatus(USART6, USART_IT_TXE) )

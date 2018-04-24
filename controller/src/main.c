@@ -18,6 +18,12 @@ short recvLedOn = 0;
 short sendLedOn = 0;
 static uint32_t USARTCount = 0;
 
+//#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"AndroidAP\",\"Password\":\"wmbm6334\"}}\n"
+//#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.43.243\",\"Port\":\"1883\"}}\n"
+#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"ece631Lab\",\"Password\":\"stm32F4!\"}}\n"
+#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.123.101\",\"Port\":\"1883\"}}\n"
+#define ZEROSETUP_SUBS "{\"Action\":\"MQTTSubs\",\"MQTT\":{\"Topics\":[\"lock\"]}}\n"
+
 commBuffer_t buffer;
 commBuffer_t txbuffer;
 
@@ -166,20 +172,25 @@ int8_t ledStatus;
 
 /* Compares the lock's status to what is displayed via the controller's LED.
  * If states differ, changes controller's LED to match lock's engagement.
+ * Returns 1 if the message was a status message, returns 0 otherwise.
  */
-void checkStatus(char *msg)
+uint8_t checkStatus(char *msg)
 {
 	int8_t status = getLockStatus(msg);
-	if (status != -1 && status != ledStatus)
+	if (status == -1)
+		return 0;
+	if (status != ledStatus)
 	{
 		ledStatus = status;
 		STM_EVAL_LEDToggle(LED3);
 	}
+	return 1;
 }
 
 void handleMsg(char *msg)
 {
-	checkStatus(msg);
+	if (checkStatus(msg) == 0)
+		checkSetup(msg);
 }
 
 /* Constructs and publishes a message onto the MQTT channel.
@@ -230,6 +241,62 @@ void checkButton()
 	{
 		lastButton = ticks;
 		flipLock();
+	}
+}
+
+/* 0 - nothing done,
+ * 1 - wifi connected,
+ * 2 - MQTT setup,
+ * 3 - MQTT subbed,
+ * 4 - done
+ */
+uint8_t zeroSetupProgress;
+
+/* checks if the received message is from the raspberry Pi Zero itself.
+ * If the message contains the Pi's startup output, we will need
+ * to set up its wifi connection and MQTT settings.
+ */
+void checkSetup(char *msg)
+{
+	if (zeroSetupProgress == 4)
+		return;
+	jsmn_parser p;
+	jsmn_init(&p);
+	jsmntok_t tokens[50];
+	stripEscapes(msg);
+	unquoteBraces(msg);
+	int32_t numtok = jsmn_parse(&p, msg, strlen(msg), tokens, 50);
+	char status[32] = {0};
+	extract_value(msg,"Response",status,numtok,tokens);
+
+	if (strcmp(status, "WifiStatus") == 0 && zeroSetupProgress == 0)
+	{
+		memset(status, 0, 32);
+		extract_value(msg,"IP",status,numtok,tokens);
+		if (strcmp(status, "null") == 0) // wifi isn't setup yet
+			sendMsg(ZEROSETUP_WIFI);
+		else
+			zeroSetupProgress = 1;
+		return;
+	}
+
+	if (zeroSetupProgress == 1)
+	{
+		sendMsg(ZEROSETUP_MQTT);
+		zeroSetupProgress = 2;
+		return;
+	}
+
+	if (strcmp(status, "MQTTSetup") == 0 && zeroSetupProgress == 2)
+	{
+		sendMsg(ZEROSETUP_SUBS);
+		zeroSetupProgress = 3;
+		return;
+	}
+
+	if (strcmp(status, "MQTTSubs") == 0 && zeroSetupProgress == 3)
+	{
+		zeroSetupProgress = 4;
 	}
 }
 

@@ -18,6 +18,7 @@ short recvLedOn = 0;
 short sendLedOn = 0;
 static uint32_t USARTCount = 0;
 
+// first two defines are for debugging purposes only (using Jan's phone as a wifi router)
 //#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"AndroidAP\",\"Password\":\"wmbm6334\"}}\n"
 //#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.43.243\",\"Port\":\"1883\"}}\n"
 #define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"ece631Lab\",\"Password\":\"stm32F4!\"}}\n"
@@ -26,7 +27,6 @@ static uint32_t USARTCount = 0;
 
 commBuffer_t buffer;
 commBuffer_t txbuffer;
-
 jsmn_parser parser;
 
 int main(void)
@@ -187,6 +187,9 @@ uint8_t checkStatus(char *msg)
 	return 1;
 }
 
+/* First checks to see if the message received was a status query.
+ * If not, calls the auto-setup method.
+ */
 void handleMsg(char *msg)
 {
 	if (checkStatus(msg) == 0)

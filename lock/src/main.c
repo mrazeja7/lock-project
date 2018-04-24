@@ -18,6 +18,13 @@ short recvLedOn = 0;
 short sendLedOn = 0;
 static uint32_t USARTCount = 0;
 
+// first two defines are for debugging purposes only (using Jan's phone as a wifi router)
+//#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"AndroidAP\",\"Password\":\"wmbm6334\"}}\n"
+//#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.43.243\",\"Port\":\"1883\"}}\n"
+#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"ece631Lab\",\"Password\":\"stm32F4!\"}}\n"
+#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.123.101\",\"Port\":\"1883\"}}\n"
+#define ZEROSETUP_SUBS "{\"Action\":\"MQTTSubs\",\"MQTT\":{\"Topics\":[\"lock\"]}}\n"
+
 commBuffer_t buffer;
 commBuffer_t txbuffer;
 jsmn_parser parser;
@@ -151,8 +158,10 @@ void setLockStatus()
 		lockStatus = 0;
 }
 
-/* Checks if the received message contains a command to flip the lock's status (ie. lock or unlock the lock) */
-void checkMessage(char *jsonString)
+/* Checks if the received message contains a command to flip the lock's status (ie. lock or unlock the lock).
+ * Returns 1 if the message contained a flip-lock message, returns 0 otherwise.
+ */
+uint8_t checkMessage(char *jsonString)
 {
 	jsmn_parser p;
 	jsmn_init(&p);
@@ -167,12 +176,18 @@ void checkMessage(char *jsonString)
 	{
 		setLockStatus();
 		sendStatus();
+		return 1;
 	}
+	return 0;
 }
 
+/* First checks to see if the message received was a lock/unlock command.
+ * If not, calls the auto-setup method.
+ */
 void handleMsg(char *msg)
 {
-	checkMessage(msg);
+	if (checkCommand(msg) == 0)
+		checkSetup();
 }
 
 /* Constructs and publishes a message onto the MQTT channel.
@@ -219,6 +234,62 @@ void sendStatus()
 	{
 		char msg[128] = "{\\\"Type\\\":\\\"Status\\\",\\\"LockStatus\\\":\\\"unknown\\\"}";
 		publishMQTT(msg);
+	}
+}
+
+/* 0 - nothing done,
+ * 1 - wifi connected,
+ * 2 - MQTT setup,
+ * 3 - MQTT subbed,
+ * 4 - done
+ */
+uint8_t zeroSetupProgress;
+
+/* checks if the received message is from the raspberry Pi Zero itself.
+ * If the message contains the Pi's startup output, we will need
+ * to set up its wifi connection and MQTT settings.
+ */
+void checkSetup(char *msg)
+{
+	if (zeroSetupProgress == 4)
+		return;
+	jsmn_parser p;
+	jsmn_init(&p);
+	jsmntok_t tokens[50];
+	stripEscapes(msg);
+	unquoteBraces(msg);
+	int32_t numtok = jsmn_parse(&p, msg, strlen(msg), tokens, 50);
+	char status[32] = {0};
+	extract_value(msg,"Response",status,numtok,tokens);
+
+	if (strcmp(status, "WifiStatus") == 0 && zeroSetupProgress == 0)
+	{
+		memset(status, 0, 32);
+		extract_value(msg,"IP",status,numtok,tokens);
+		if (strcmp(status, "null") == 0) // wifi isn't setup yet
+			sendMsg(ZEROSETUP_WIFI);
+		else
+			zeroSetupProgress = 1;
+		return;
+	}
+
+	if (zeroSetupProgress == 1)
+	{
+		sendMsg(ZEROSETUP_MQTT);
+		zeroSetupProgress = 2;
+		return;
+	}
+
+	if (strcmp(status, "MQTTSetup") == 0 && zeroSetupProgress == 2)
+	{
+		sendMsg(ZEROSETUP_SUBS);
+		zeroSetupProgress = 3;
+		return;
+	}
+
+	if (strcmp(status, "MQTTSubs") == 0 && zeroSetupProgress == 3)
+	{
+		zeroSetupProgress = 4;
 	}
 }
 

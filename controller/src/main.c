@@ -240,7 +240,7 @@ uint8_t debounce()
 /* Checks if the user (==blue) button is currently pressed and can be used. */
 void checkButton()
 {
-	if( debounce() && GPIOA->IDR & 0x0001)
+	if( debounce() && (GPIOA->IDR & 0x0001))
 	{
 		lastButton = ticks;
 		flipLock();

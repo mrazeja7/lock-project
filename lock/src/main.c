@@ -161,7 +161,7 @@ void setLockStatus()
 /* Checks if the received message contains a command to flip the lock's status (ie. lock or unlock the lock).
  * Returns 1 if the message contained a flip-lock message, returns 0 otherwise.
  */
-uint8_t checkMessage(char *jsonString)
+uint8_t checkCommand(char *jsonString)
 {
 	jsmn_parser p;
 	jsmn_init(&p);
@@ -187,7 +187,7 @@ uint8_t checkMessage(char *jsonString)
 void handleMsg(char *msg)
 {
 	if (checkCommand(msg) == 0)
-		checkSetup();
+		checkSetup(msg);
 }
 
 /* Constructs and publishes a message onto the MQTT channel.

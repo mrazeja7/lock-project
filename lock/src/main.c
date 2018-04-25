@@ -21,8 +21,11 @@ static uint32_t USARTCount = 0;
 // first two defines are for debugging purposes only (using Jan's phone as a wifi router)
 //#define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"AndroidAP\",\"Password\":\"wmbm6334\"}}\n"
 //#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.43.243\",\"Port\":\"1883\"}}\n"
+
 #define ZEROSETUP_WIFI "{\"Action\":\"WifiSetup\",\"Wifi\":{\"SSID\":\"ece631Lab\",\"Password\":\"stm32F4!\"}}\n"
-#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.123.101\",\"Port\":\"1883\"}}\n"
+
+#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.123.119\",\"Port\":\"1883\"}}\n" //Jan's MQTT
+//#define ZEROSETUP_MQTT "{\"Action\":\"MQTTSetup\",\"MQTT\":{\"Host\":\"192.168.123.101\",\"Port\":\"1883\"}}\n" //Hamza's MQTT
 #define ZEROSETUP_SUBS "{\"Action\":\"MQTTSubs\",\"MQTT\":{\"Topics\":[\"lock\"]}}\n"
 
 commBuffer_t buffer;

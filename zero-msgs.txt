@@ -1,8 +1,0 @@
-{"Message": {"Description": "ECE631 Serial To Wifi Bridge With MQTT support Configured Using JSON"}, "Response": "StartUp"}
-
-{"Message": {"Version": "{\"Date\": \"2018-03-05\", \"MajorMinor\": \"2.0.1\", \"Info\": \"Version 2.0.1 - 2018-03-05\"}"}, "Response": "StartUp"}
-
-{"Message": {"Wifi": "{\"IP\": null, \"MAC\": \"b827ebd26a26\", \"Gateway\": \"\", \"isGWPingable\": null}"}, "Response": "WifiStatus"}
-
-{"Message": {"Wifi": "{\"IP\": \"192.168.43.25\", \"MAC\": \"b827ebd26a26\", \"Gateway\": \"192.168.43.1\", \"isGWPingable\": true}"}, "Response": "WifiStatus"}
-
